@@ -1,0 +1,22 @@
+# Entorno
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Configuración local
+.env
+
+# Datos generados
+data/processed/*.db
+data/processed/*.db-journal
+data/processed/*.jsonl
+data/processed/*.csv
+data/chroma/
+data/raw/
+
+# Sistema
+.DS_Store

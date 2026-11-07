@@ -1,0 +1,1 @@
+"""Exportación a formatos editables."""
