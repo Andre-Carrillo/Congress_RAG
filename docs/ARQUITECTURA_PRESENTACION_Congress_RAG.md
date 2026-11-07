@@ -121,7 +121,7 @@ En ningún paso el LLM cuenta votos.
 | Actas | 41 |
 | Votaciones | 676 |
 | Filas de voto | 62,537 |
-| Congresistas | 132 |
+| Congresistas con voto registrado | 132 |
 | Bancadas | 14 |
 | Páginas | 4,619 |
 
