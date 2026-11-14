@@ -125,6 +125,10 @@ En ningún paso el LLM cuenta votos.
 | Bancadas | 14 |
 | Páginas | 4,619 |
 
+El corpus ya extraído del alcance está incluido en `data/corpus/` y la base
+lista para consultar en `data/processed/congress.db`. No hace falta ejecutar
+el scraper para abrir la aplicación.
+
 ---
 
 ## Slide 6 — Por qué no alucina

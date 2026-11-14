@@ -35,6 +35,36 @@ Dos últimas legislaturas ordinarias:
 
 La fuente de datos es el proyecto `ushnu-congreso`, que ya contiene las actas extraídas a texto y las votaciones consolidadas. **No se ejecuta** el scraper ni el parser antiguo (evita ~5 horas de procesamiento).
 
+## Datos incluidos
+
+El repositorio incluye el corpus ya extraído para que puedas reconstruir la base sin volver a scrapear:
+
+| Ruta | Contenido |
+|---|---|
+| `data/corpus/datos/publicos/` | sesiones, votaciones, votos consolidados, congresistas y bancadas del alcance |
+| `data/corpus/datos/procesados/texto/` | 41 actas de las dos legislaturas, con marcadores de página |
+| `data/corpus/legacy/votos_csv/` | votaciones del pipeline anterior, usadas para el contraste de calidad |
+| `data/corpus/manifest.json` | origen, alcance, conteos y fecha de preparación |
+| `data/processed/qa_report.csv` | reporte de calidad de las 676 votaciones |
+| `data/processed/eval_resultados.csv` | resultados del set de evaluación sin LLM |
+
+La base `data/processed/congress.db` y los `2,499` chunks de `data/processed/chunks.jsonl` se generan localmente con la ingesta y no se versionan por tamaño (17 MB + 11 MB).
+
+Para regenerar el corpus incluido desde el proyecto completo:
+
+```bash
+uv run python scripts/prepare_corpus.py \
+  --origen ~/Documents/dev/ushnu-congreso
+```
+
+Para reconstruir la base y los chunks desde ese corpus:
+
+```bash
+uv run python scripts/ingest.py
+```
+
+Si prefieres usar el corpus completo en lugar del incluido, ajusta `USHNU_DIR` y `LEGACY_DIR` en `.env` (ver `.env.example`).
+
 ## Instalación
 
 ```bash

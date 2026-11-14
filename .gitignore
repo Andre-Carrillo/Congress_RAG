@@ -11,12 +11,11 @@ htmlcov/
 .env
 
 # Datos generados
+data/chroma/
+data/raw/
 data/processed/*.db
 data/processed/*.db-journal
 data/processed/*.jsonl
-data/processed/*.csv
-data/chroma/
-data/raw/
 
 # Sistema
 .DS_Store

@@ -18,8 +18,8 @@ class Settings(BaseSettings):
     )
 
     # Corpus y rutas
-    ushnu_dir: Path = Path.home() / "Documents/dev/ushnu-congreso"
-    legacy_dir: Path = Path.home() / "Documents/dev/Congress_Analysis"
+    ushnu_dir: Path = PROJECT_ROOT / "data/corpus"
+    legacy_dir: Path = PROJECT_ROOT / "data/corpus/legacy"
     data_dir: Path = PROJECT_ROOT / "data"
     db_path: Path = PROJECT_ROOT / "data/processed/congress.db"
     chroma_dir: Path = PROJECT_ROOT / "data/chroma"
@@ -42,7 +42,15 @@ class Settings(BaseSettings):
     min_score: float = 0.25
 
     def model_post_init(self, __context: object, /) -> None:
-        for name in ("data_dir", "db_path", "chroma_dir", "chunks_path", "qa_report_path"):
+        for name in (
+            "ushnu_dir",
+            "legacy_dir",
+            "data_dir",
+            "db_path",
+            "chroma_dir",
+            "chunks_path",
+            "qa_report_path",
+        ):
             value = getattr(self, name)
             if not value.is_absolute():
                 setattr(self, name, PROJECT_ROOT / value)

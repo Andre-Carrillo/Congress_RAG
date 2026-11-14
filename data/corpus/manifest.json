@@ -1,0 +1,28 @@
+{
+  "generado_en": "2026-11-14T23:44:02.938938+00:00",
+  "origen": "/home/andre/Documents/dev/ushnu-congreso",
+  "legislaturas": [
+    "2025-2026-L1",
+    "2025-2026-L2"
+  ],
+  "actas": 41,
+  "actas_texto_copiadas": 41,
+  "votaciones": 676,
+  "votos": 62537,
+  "congresistas_oficiales": 140,
+  "legacy": [
+    "1.1.csv",
+    "1.2.csv",
+    "2.1.csv",
+    "2.2.csv",
+    "3.1.csv",
+    "3.2.csv",
+    "3.3.csv",
+    "4.1.csv",
+    "4.2.csv",
+    "5.1.csv",
+    "5.2.csv",
+    "5.3.csv"
+  ],
+  "nota": "Corpus ya extraído del proyecto ushnu-congreso. No se ejecutó scraping ni descarga de PDFs para generar estos archivos."
+}
