@@ -48,7 +48,7 @@ testpaths = ["tests"]
 pythonpath = ["src"]
 addopts = "-q"
 markers = [
-    "integration: pruebas que requieren el corpus real de ushnu-congreso",
+    "integration: pruebas que requieren el corpus real incluido",
 ]
 
 [tool.ruff]

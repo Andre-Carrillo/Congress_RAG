@@ -71,7 +71,7 @@ class Votacion(Base):
     declarado_no: Mapped[int] = mapped_column(default=0)
     declarado_abstencion: Mapped[int] = mapped_column(default=0)
     conteo_listado: Mapped[int] = mapped_column(default=0)
-    origen: Mapped[str] = mapped_column(String(20), default="ushnu")
+    origen: Mapped[str] = mapped_column(String(20), default="consolidado")
 
     documento: Mapped[Documento] = relationship(back_populates="votaciones")
     votos: Mapped[list[Voto]] = relationship(back_populates="votacion")

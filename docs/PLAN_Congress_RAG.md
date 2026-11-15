@@ -5,7 +5,7 @@
 **Fecha:** 7 de noviembre de 2026
 **Autor:** André Carrillo
 **Proyecto base:** `~/Documents/dev/Congress_Analysis`
-**Fuente de datos principal:** `~/Documents/dev/ushnu-congreso`
+**Fuente de datos principal:** `data/corpus` (incluido en el repositorio)
 
 ---
 
@@ -45,16 +45,16 @@ Para la presentación de avance y la primera versión funcional se usan **las do
 
 ### Decisión de proceso: no ejecutar `scrap.py` ni `pdf_to_csv.py`
 
-El proyecto `ushnu-congreso` ya contiene:
+El corpus incluido en el repositorio ya contiene:
 
-- las **265 actas extraídas a texto** con marcadores de página (`===== PAGINA N =====`),
-- **4,334 votaciones** parseadas con posición y página de inicio,
-- **433,832 filas de voto** consolidadas con nivel de confianza y trazabilidad de subsanaciones,
+- las **41 actas del alcance extraídas a texto** con marcadores de página (`===== PAGINA N =====`),
+- **676 votaciones** con posición y página de inicio,
+- **62,537 filas de voto** consolidadas con nivel de confianza y trazabilidad de subsanaciones,
 - las **URLs de los PDF originales** para cada acta.
 
-Por lo tanto, **no se ejecutará el scraper ni el parser antiguo** para construir el prototipo. Esto elimina las ~5 horas de procesamiento y mejora la calidad de los datos de entrada (página, confianza, subsanaciones).
+Por lo tanto, **no se ejecutará ningún scraper ni parser de PDF** para construir el prototipo. Esto elimina horas de procesamiento y mejora la calidad de los datos de entrada (página, confianza, subsanaciones).
 
-El proyecto `Congress_Analysis` se conserva como **fuente de validación cruzada**: sus CSV `5.1` y `5.2` permiten medir cuántas votaciones recupera el pipeline nuevo.
+El pipeline anterior (`Congress_Analysis`) se conserva como **fuente de validación cruzada**: sus CSV `5.1` y `5.2` permiten medir cuántas votaciones recupera el corpus actual.
 
 ### Métricas exactas del alcance
 
@@ -73,27 +73,26 @@ El proyecto `Congress_Analysis` se conserva como **fuente de validación cruzada
 
 ### Hallazgo que justifica el reproceso
 
-| Legislatura | Votaciones en `Congress_Analysis` | Votaciones en `ushnu-congreso` | Diferencia |
+| Legislatura | Votaciones en `Congress_Analysis` | Votaciones en el corpus consolidado | Diferencia |
 |---|---|---|---|
 | 2025-2026-L1 | 402 (`votos_csv/5.1.csv`) | 402 | 0 |
 | 2025-2026-L2 | 226 (`votos_csv/5.2.csv`) | 274 | **+48 recuperadas (+21%)** |
 
-Los datos consolidados de `ushnu-congreso` contienen 48 votaciones más que el CSV del pipeline anterior. Es evidencia medible de que el CSV legacy está incompleto, no una opinión.
+El corpus consolidado contiene 48 votaciones más que el CSV del pipeline anterior. Es evidencia medible de que el CSV legacy está incompleto, no una opinión.
 
 ## 4. Fuentes de datos
 
-Todas las rutas son relativas a `~/Documents/dev/ushnu-congreso`.
+Todas las rutas son relativas a `data/corpus`.
 
 | Archivo | Contenido | Uso en el proyecto |
 |---|---|---|
-| `datos/procesados/texto/*.txt` | 265 actas con marcadores de página | Corpus narrativo y reconstrucción del bloque de votación |
-| `datos/publicos/sesiones.csv` | `acta_id`, fecha, periodo, `legislatura_codigo` | Filtro de alcance y metadata |
-| `datos/publicos/votaciones.csv` | 4,334 votaciones con `pagina_inicio`, `posicion_inicio/fin`, conteos | Tabla `votaciones` y validación |
-| `datos/publicos/votos_largo_consolidado.csv` | 433,832 filas con `voto_normalizado`, `confianza`, `fuente_voto` | Tabla `votos` y validación |
-| `datos/publicos/congresistas_oficiales_actuales.csv` | 140 congresistas, grupo parlamentario | Tabla `congresistas` |
-| `datos/publicos/bancadas_resueltas_general.csv` | Bancada por congresista y fecha | Metadata de bancada |
-| `datos/publicos/registro_extraccion.csv` | `pdf_url` y SHA-256 por acta | Enlace "ver PDF" en las citas |
-| `datos/publicos/votaciones_clasificadas.csv` | Categorías detectadas por votación | Filtro por tipo |
+| `actas/*.txt` | 41 actas con marcadores de página | Corpus narrativo y reconstrucción del bloque de votación |
+| `publicos/sesiones.csv` | `acta_id`, fecha, periodo, `legislatura_codigo` | Filtro de alcance y metadata |
+| `publicos/votaciones.csv` | 676 votaciones con `pagina_inicio`, `posicion_inicio/fin`, conteos | Tabla `votaciones` y validación |
+| `publicos/votos_largo_consolidado.csv` | 62,537 filas con `voto_normalizado`, `confianza`, `fuente_voto` | Tabla `votos` y validación |
+| `publicos/congresistas_oficiales_actuales.csv` | 140 congresistas, grupo parlamentario | Tabla `congresistas` |
+| `publicos/bancadas_resueltas_general.csv` | Bancada por congresista y fecha | Metadata de bancada |
+| `publicos/registro_extraccion.csv` | `pdf_url` y SHA-256 por acta | Enlace "ver PDF" en las citas |
 
 Fuente de validación cruzada: `~/Documents/dev/Congress_Analysis/votos_csv/5.1.csv` y `5.2.csv`.
 
@@ -124,7 +123,7 @@ El LLM solo redacta y estructura. Los números salen de SQLite. Las citas salen 
 ```
 ┌──────────────────────────────────────────────────────────────────────┐
 │                         FUENTES DE DATOS                              │
-│  ushnu-congreso: texto de actas + votaciones.csv + votos_largo.csv    │
+│  data/corpus: actas en texto + votaciones.csv + votos_largo.csv       │
 │  Congress_Analysis: votos_csv/5.1.csv, 5.2.csv (validación cruzada)   │
 └───────────────────────────────┬──────────────────────────────────────┘
                                 │
@@ -233,7 +232,7 @@ Congress_RAG/
 ```sql
 CREATE TABLE congresistas (
     id                  INTEGER PRIMARY KEY,
-    congresista_id      TEXT UNIQUE,        -- id oficial de ushnu
+    congresista_id      TEXT UNIQUE,        -- id del padrón oficial
     nombre              TEXT NOT NULL,
     nombre_normalizado  TEXT NOT NULL,
     grupo_partido       TEXT,
@@ -272,7 +271,7 @@ CREATE TABLE votaciones (
     conteo_no           INTEGER,
     conteo_abstencion   INTEGER,
     conteo_listado      INTEGER,
-    origen              TEXT                -- "ushnu" | "legacy" | "pdf"
+    origen              TEXT                -- "consolidado" | "legacy" | "pdf"
 );
 
 CREATE TABLE votos (
@@ -507,7 +506,7 @@ Total: **10–13 días efectivos**.
 | Python 3.14/3.15 sin wheels de PyTorch | Alto | Fijar el proyecto nuevo a **Python 3.12** |
 | Texto OCR con espaciado irregular | Alto | Capa `normalize.py` con tests sobre actas reales |
 | 90% de votos con confianza `media` | Medio | Exponer confianza en UI; permitir filtro `alta`; validar contra conteos declarados |
-| Nombres no resueltos o alias | Medio | Usar el `congresista_id` oficial de `ushnu-congreso`, que ya resolvió identidades |
+| Nombres no resueltos o alias | Medio | Usar el `congresista_id` del padrón, que ya resolvió identidades |
 | Subsanaciones que cambian un voto | Medio | Usar `voto_consolidado` y conservar `voto_original` y `subsanacion_id` para auditoría |
 | Agregaciones inventadas por el LLM | Alto | SQL determinista obligatorio; el LLM no calcula |
 | ChromaDB incompatible con el entorno | Bajo | Interfaz `vector_store.py` con alternativa FAISS |
@@ -534,7 +533,7 @@ El prototipo se considera listo cuando:
 |---|---|
 | Ubicación | Repo nuevo `~/Documents/dev/Congress_RAG` |
 | Alcance | `2025-2026-L1` y `2025-2026-L2` |
-| Fuente de datos | `ushnu-congreso` (texto + CSV consolidados) |
+| Fuente de datos | `data/corpus` (actas en texto + CSV consolidados) |
 | Scraper / parser antiguo | **No se ejecutan** |
 | LLM | Abstracción Ollama + Gemini |
 | Embeddings | `intfloat/multilingual-e5-small` |

@@ -111,7 +111,7 @@ if "legacy_encontrado" in qa.columns:
     encontradas = int(qa["legacy_encontrado"].sum())
     st.markdown(
         f"- Votaciones con equivalente en `votos_csv`: **{encontradas}** de {len(qa)}.\n"
-        f"- Votaciones recuperadas solo por `ushnu-congreso`: **{len(qa) - encontradas}**.\n"
+        f"- Votaciones recuperadas solo por el corpus consolidado: **{len(qa) - encontradas}**.\n"
         "- Las discrepancias de conteo se listan arriba con estado "
         "`discrepancia_conteo` o `discrepancia_legacy`."
     )

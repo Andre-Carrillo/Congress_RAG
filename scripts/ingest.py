@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-"""Ingesta completa: ushnu-congreso -> SQLite + chunks + QA."""
+"""Ingesta completa: corpus CSV -> SQLite + chunks + QA."""
 
 from __future__ import annotations
 

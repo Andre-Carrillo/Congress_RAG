@@ -57,7 +57,7 @@ Pregunta ──▶ ¿Qué necesita?
 ```
 ┌─────────────────────────────────────────────────────┐
 │ FUENTES                                             │
-│ ushnu-congreso: 265 actas en texto + 433k votos     │
+│ data/corpus: 41 actas en texto + 62,537 votos       │
 │ Congress_Analysis: votos_csv 5.1 / 5.2 (validación) │
 └───────────────────────┬─────────────────────────────┘
                         ▼
@@ -147,14 +147,14 @@ el scraper para abrir la aplicación.
 
 Al comparar el pipeline anterior con los datos consolidados:
 
-| Legislatura | `Congress_Analysis` | `ushnu-congreso` | Diferencia |
+| Legislatura | `Congress_Analysis` | Corpus consolidado | Diferencia |
 |---|---|---|---|
 | 2025-2026-L1 | 402 | 402 | 0 |
 | 2025-2026-L2 | 226 | 274 | **+48 votaciones** |
 
 **Los datos consolidados contienen 21% más votaciones en la segunda legislatura que el pipeline anterior.**
 
-Además, se elimina la corrida de ~5 horas de `scrap.py` y `pdf_to_csv.py`: las actas ya están extraídas a texto con página y las votaciones ya están consolidadas con nivel de confianza.
+Además, se elimina la corrida de horas del scraper y del parser de PDF: las actas ya están extraídas a texto con página y las votaciones ya están consolidadas con nivel de confianza.
 
 ---
 

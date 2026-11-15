@@ -1,4 +1,4 @@
-"""Carga del corpus consolidado de ``ushnu-congreso`` a SQLite."""
+"""Carga del corpus consolidado de actas y votaciones a SQLite."""
 
 from __future__ import annotations
 
@@ -27,6 +27,8 @@ from congress_rag.ingestion.normalize import normalize_key, normalize_title
 from congress_rag.schemas import IngestStats
 
 ENCODING = "utf-8-sig"
+CSV_DIR = "publicos"
+ACTAS_DIR = "actas"
 
 
 @dataclass
@@ -65,8 +67,8 @@ def clasificar_tipo(titulo: str) -> str:
     return "otro"
 
 
-def cargar_legislaturas(ushnu_dir: Path, legislaturas: list[str]) -> list[dict[str, Any]]:
-    sesiones = _read_csv(ushnu_dir / "datos/publicos/sesiones.csv")
+def cargar_legislaturas(corpus_dir: Path, legislaturas: list[str]) -> list[dict[str, Any]]:
+    sesiones = _read_csv(corpus_dir / CSV_DIR / "sesiones.csv")
     sesiones = sesiones[sesiones["legislatura_codigo"].isin(legislaturas)]
     rows: list[dict[str, Any]] = []
     for codigo, grupo in sesiones.groupby("legislatura_codigo", sort=False):
@@ -81,9 +83,9 @@ def cargar_legislaturas(ushnu_dir: Path, legislaturas: list[str]) -> list[dict[s
     return rows
 
 
-def cargar_congresistas(ushnu_dir: Path) -> list[dict[str, Any]]:
-    oficiales = _read_csv(ushnu_dir / "datos/publicos/congresistas_oficiales_actuales.csv")
-    bancadas_path = ushnu_dir / "datos/publicos/bancadas_resueltas_general.csv"
+def cargar_congresistas(corpus_dir: Path) -> list[dict[str, Any]]:
+    oficiales = _read_csv(corpus_dir / CSV_DIR / "congresistas_oficiales_actuales.csv")
+    bancadas_path = corpus_dir / CSV_DIR / "bancadas_resueltas_general.csv"
     bancadas = _read_csv(bancadas_path) if bancadas_path.exists() else pd.DataFrame()
 
     mapa_bancada: dict[str, str] = {}
@@ -115,12 +117,12 @@ def cargar_congresistas(ushnu_dir: Path) -> list[dict[str, Any]]:
 
 
 def cargar_documentos(
-    ushnu_dir: Path, legislaturas: list[str]
+    corpus_dir: Path, legislaturas: list[str]
 ) -> tuple[list[dict[str, Any]], set[str]]:
-    sesiones = _read_csv(ushnu_dir / "datos/publicos/sesiones.csv")
+    sesiones = _read_csv(corpus_dir / CSV_DIR / "sesiones.csv")
     sesiones = sesiones[sesiones["legislatura_codigo"].isin(legislaturas)].copy()
 
-    extraccion_path = ushnu_dir / "datos/publicos/registro_extraccion.csv"
+    extraccion_path = corpus_dir / CSV_DIR / "registro_extraccion.csv"
     extraccion = _read_csv(extraccion_path) if extraccion_path.exists() else pd.DataFrame()
     mapa_extraccion = (
         extraccion.set_index("acta_id").to_dict("index") if not extraccion.empty else {}
@@ -129,7 +131,7 @@ def cargar_documentos(
     rows: list[dict[str, Any]] = []
     for _, row in sesiones.iterrows():
         acta_id = row["acta_id"]
-        ruta = ushnu_dir / (row.get("ruta_texto") or f"datos/procesados/texto/{acta_id}.txt")
+        ruta = corpus_dir / (row.get("ruta_texto") or f"{ACTAS_DIR}/{acta_id}.txt")
         n_paginas = 0
         if ruta.exists():
             n_paginas = len(split_pages(ruta.read_text(encoding="utf-8")))
@@ -149,8 +151,8 @@ def cargar_documentos(
     return rows, set(sesiones["acta_id"].tolist())
 
 
-def cargar_votaciones(ushnu_dir: Path, acta_ids: set[str]) -> list[dict[str, Any]]:
-    votaciones = _read_csv(ushnu_dir / "datos/publicos/votaciones.csv")
+def cargar_votaciones(corpus_dir: Path, acta_ids: set[str]) -> list[dict[str, Any]]:
+    votaciones = _read_csv(corpus_dir / CSV_DIR / "votaciones.csv")
     votaciones = votaciones[votaciones["acta_id"].isin(acta_ids)]
 
     rows: list[dict[str, Any]] = []
@@ -178,7 +180,7 @@ def cargar_votaciones(ushnu_dir: Path, acta_ids: set[str]) -> list[dict[str, Any
                 "declarado_no": int(row.get("conteo_no") or 0),
                 "declarado_abstencion": int(row.get("conteo_abstencion") or 0),
                 "conteo_listado": int(row.get("conteo_total_explicitamente_listado") or 0),
-                "origen": "ushnu",
+                "origen": "consolidado",
             }
         )
     return rows
@@ -190,11 +192,11 @@ def _posicion(valor: str) -> int:
 
 
 def cargar_votos(
-    ushnu_dir: Path,
+    corpus_dir: Path,
     votacion_ids: set[str],
     congresistas_por_clave: dict[str, int],
 ) -> tuple[list[dict[str, Any]], int]:
-    path = ushnu_dir / "datos/publicos/votos_largo_consolidado.csv"
+    path = corpus_dir / CSV_DIR / "votos_largo_consolidado.csv"
     rows: list[dict[str, Any]] = []
     sin_match: set[str] = set()
 
@@ -295,7 +297,7 @@ def bootstrap(session: Session, cfg: Settings | None = None) -> IngestStats:
 
     stats = IngestStats()
 
-    legislaturas = cargar_legislaturas(cfg.ushnu_dir, cfg.legislaturas_list)
+    legislaturas = cargar_legislaturas(cfg.corpus_dir, cfg.legislaturas_list)
     session.add_all(
         [
             Legislatura(id=row["id"], periodo_anual=row["periodo_anual"], nombre=row["nombre"])
@@ -304,18 +306,18 @@ def bootstrap(session: Session, cfg: Settings | None = None) -> IngestStats:
     )
     session.flush()
 
-    congresistas = cargar_congresistas(cfg.ushnu_dir)
+    congresistas = cargar_congresistas(cfg.corpus_dir)
     session.add_all([Congresista(**row) for row in congresistas])
     session.flush()
     stats.congresistas = len(congresistas)
 
-    documentos, acta_ids = cargar_documentos(cfg.ushnu_dir, cfg.legislaturas_list)
+    documentos, acta_ids = cargar_documentos(cfg.corpus_dir, cfg.legislaturas_list)
     session.add_all([Documento(**row) for row in documentos])
     session.flush()
     stats.documentos = len(documentos)
 
     mapa_documentos = dict(session.execute(select(Documento.acta_id, Documento.id)).all())
-    votaciones = cargar_votaciones(cfg.ushnu_dir, acta_ids)
+    votaciones = cargar_votaciones(cfg.corpus_dir, acta_ids)
     session.add_all(
         [
             Votacion(
@@ -338,7 +340,7 @@ def bootstrap(session: Session, cfg: Settings | None = None) -> IngestStats:
         session.execute(select(Votacion.votacion_id, Votacion.id)).all()
     )
 
-    votos, _sin_match = cargar_votos(cfg.ushnu_dir, set(mapa_votaciones), congresistas_por_clave)
+    votos, _sin_match = cargar_votos(cfg.corpus_dir, set(mapa_votaciones), congresistas_por_clave)
     votos_db: dict[tuple[int, int], dict[str, Any]] = {}
     for row in votos:
         votos_db[(mapa_votaciones[row["votacion_id"]], row["congresista_id"])] = {

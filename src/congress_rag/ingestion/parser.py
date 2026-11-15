@@ -1,7 +1,7 @@
-"""Parser de respaldo para actas nuevas que aún no estén en ushnu-congreso.
+"""Parser de respaldo para actas nuevas que aún no estén en el corpus.
 
-El pipeline principal usa los CSV consolidados de ``ushnu-congreso``. Este
-parser existe para incorporar PDFs nuevos sin depender de ese proyecto.
+El pipeline principal usa los CSV consolidados incluidos en el repositorio.
+Este parser existe para incorporar PDFs nuevos sin depender de ellos.
 """
 
 from __future__ import annotations

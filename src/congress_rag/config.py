@@ -18,7 +18,7 @@ class Settings(BaseSettings):
     )
 
     # Corpus y rutas
-    ushnu_dir: Path = PROJECT_ROOT / "data/corpus"
+    corpus_dir: Path = PROJECT_ROOT / "data/corpus"
     legacy_dir: Path = PROJECT_ROOT / "data/corpus/legacy"
     data_dir: Path = PROJECT_ROOT / "data"
     db_path: Path = PROJECT_ROOT / "data/processed/congress.db"
@@ -48,7 +48,7 @@ class Settings(BaseSettings):
 
     def model_post_init(self, __context: object, /) -> None:
         for name in (
-            "ushnu_dir",
+            "corpus_dir",
             "legacy_dir",
             "data_dir",
             "db_path",

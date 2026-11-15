@@ -66,7 +66,7 @@ st.markdown(
 
 st.subheader("Estado del entorno")
 st.code(
-    f"Corpus: {settings.ushnu_dir}\n"
+    f"Corpus: {settings.corpus_dir}\n"
     f"Base:   {settings.db_path}\n"
     f"Chroma: {settings.chroma_dir}\n"
     f"Alcance: {', '.join(settings.legislaturas_list)}\n"

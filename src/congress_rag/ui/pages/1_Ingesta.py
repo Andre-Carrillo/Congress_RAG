@@ -17,7 +17,7 @@ st.set_page_config(page_title="Ingesta · Congress_RAG", page_icon="📥", layou
 st.title("Ingesta del corpus")
 
 st.markdown(
-    f"**Fuente:** `{settings.ushnu_dir}`  \n"
+    f"**Corpus:** `{settings.corpus_dir}`  \n"
     f"**Alcance:** `{', '.join(settings.legislaturas_list)}`  \n"
     f"**Base de datos:** `{settings.db_path}`"
 )
