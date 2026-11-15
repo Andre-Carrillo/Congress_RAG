@@ -114,6 +114,30 @@ def route_heuristic(pregunta: str) -> QueryPlan:
     )
 
 
+def _fusionar_filtros(base: Filtros, propuesto: Filtros) -> Filtros:
+    """Conserva las entidades detectadas por reglas y completa el resto con el LLM.
+
+    El router heurístico reconoce mociones, proyectos, legislaturas y bancadas
+    con expresiones regulares. Si el LLM devuelve un identificador más vago
+    (por ejemplo ``19785`` en vez de ``moción 19785``), prevalece la regla para
+    no seleccionar una votación distinta que también mencione el número.
+    """
+
+    datos = propuesto.model_dump()
+    for campo in ("legislatura", "bancada", "tipo", "proyecto_o_mocion"):
+        valor = getattr(base, campo)
+        if valor:
+            datos[campo] = valor
+    return Filtros(**datos)
+
+
+def _hay_entidades(filtros: Filtros) -> bool:
+    return any(
+        getattr(filtros, campo)
+        for campo in ("legislatura", "bancada", "proyecto_o_mocion", "acta_id")
+    )
+
+
 def route(pregunta: str, provider: LLMProvider | None = None) -> QueryPlan:
     heuristico = route_heuristic(pregunta)
     if provider is None:
@@ -124,13 +148,24 @@ def route(pregunta: str, provider: LLMProvider | None = None) -> QueryPlan:
         "Devuelve un QueryPlan. Usa intencion=agregacion para conteos y listas, "
         "busqueda para contexto del debate, mixta para ambas, fuera_de_alcance si "
         "no trata sobre el corpus.\n"
+        "En filtros.proyecto_o_mocion escribe siempre la palabra y el número, "
+        "por ejemplo 'moción 19785' o 'proyecto 186'.\n"
         "Bancadas posibles: " + ", ".join(BANCADAS) + ".\n"
         f"Consulta: {pregunta}"
     )
     try:
         plan = provider.generate(prompt, schema=QueryPlan)
         if isinstance(plan, QueryPlan):
-            return plan
+            intencion = plan.intencion
+            if intencion == "fuera_de_alcance" and _hay_entidades(heuristico.filtros):
+                intencion = heuristico.intencion
+            return QueryPlan(
+                intencion=intencion,
+                filtros=_fusionar_filtros(heuristico.filtros, plan.filtros),
+                requiere_sql=plan.requiere_sql,
+                requiere_contexto=plan.requiere_contexto,
+                consulta_reescrita=plan.consulta_reescrita or heuristico.consulta_reescrita,
+            )
     except Exception:
         pass
     return heuristico

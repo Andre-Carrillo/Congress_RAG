@@ -6,6 +6,7 @@ from typing import Any
 
 from sqlalchemy.orm import Session
 
+from congress_rag.config import settings
 from congress_rag.ingestion.normalize import normalize_key
 from congress_rag.rag import sql_tools
 from congress_rag.rag.llm import LLMProvider
@@ -186,7 +187,8 @@ def answer_question(
     retriever: Retriever | None = None,
     use_llm: bool = True,
 ) -> Answer:
-    plan = route(pregunta, provider if use_llm else None)
+    usar_router_llm = provider if (use_llm and settings.llm_router) else None
+    plan = route(pregunta, usar_router_llm)
 
     if plan.intencion == "fuera_de_alcance":
         return Answer(

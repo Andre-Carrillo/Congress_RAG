@@ -48,23 +48,40 @@ class OllamaProvider:
 
 
 class GeminiProvider:
-    def __init__(self, api_key: str | None = None, model: str | None = None) -> None:
+    def __init__(
+        self,
+        api_key: str | None = None,
+        model: str | None = None,
+        timeout_ms: int | None = None,
+    ) -> None:
         self.api_key = api_key or settings.gemini_api_key
         self.model = model or settings.gemini_model
+        self.timeout_ms = timeout_ms or settings.gemini_timeout_ms
         if not self.api_key:
             raise RuntimeError("GEMINI_API_KEY no está configurada en .env")
 
     def name(self) -> str:
         return f"gemini:{self.model}"
 
+    def _cliente(self) -> Any:
+        from google import genai
+        from google.genai import types
+
+        return genai.Client(
+            api_key=self.api_key,
+            http_options=types.HttpOptions(
+                timeout=self.timeout_ms,
+                retry_options=types.HttpRetryOptions(attempts=2),
+            ),
+        )
+
     def generate(self, prompt: str, schema: type[BaseModel] | None = None) -> str | BaseModel:
         try:
-            from google import genai
             from google.genai import types
         except ImportError as exc:  # pragma: no cover - depende de extras
             raise RuntimeError("Falta google-genai. Instala con: uv sync --extra llm") from exc
 
-        cliente = genai.Client(api_key=self.api_key)
+        cliente = self._cliente()
         config = types.GenerateContentConfig(temperature=0)
         if schema is not None:
             config.response_mime_type = "application/json"

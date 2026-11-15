@@ -118,6 +118,31 @@ curl -s -X POST http://127.0.0.1:8000/v1/consulta \
 
 Documentación completa y ejemplos: [`docs/API.md`](docs/API.md).
 
+## LLM (opcional)
+
+La app funciona sin LLM: en ese caso responde de forma determinista desde SQL.
+Para redactar con un modelo, configura `.env`:
+
+```env
+# Opción local, sin costo ni cuota
+LLM_PROVIDER=ollama
+OLLAMA_MODEL=qwen2.5:7b-instruct
+
+# Opción Gemini
+LLM_PROVIDER=gemini
+GEMINI_API_KEY=...
+GEMINI_MODEL=gemini-3.5-flash
+GEMINI_TIMEOUT_MS=45000
+
+# El router por reglas ya detecta moción/proyecto/bancada.
+# Activar el router LLM añade una llamada por consulta.
+LLM_ROUTER=false
+```
+
+Si el proveedor falla o tarda más que `GEMINI_TIMEOUT_MS`, la respuesta se
+genera de forma determinista y se agrega `"LLM no disponible: ..."` en
+`advertencias`. El LLM nunca calcula cifras.
+
 ## Estructura
 
 ```

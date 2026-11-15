@@ -31,10 +31,12 @@ class Settings(BaseSettings):
 
     # LLM
     llm_provider: str = "ollama"
+    llm_router: bool = False
     ollama_host: str = "http://localhost:11434"
     ollama_model: str = "qwen2.5:7b-instruct"
     gemini_api_key: str = ""
-    gemini_model: str = "gemini-2.0-flash"
+    gemini_model: str = "gemini-3.5-flash"
+    gemini_timeout_ms: int = 45000
 
     # Recuperación
     embedding_model: str = "intfloat/multilingual-e5-small"
