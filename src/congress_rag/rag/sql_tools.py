@@ -8,7 +8,13 @@ from typing import Any
 from sqlalchemy import case, func, select
 from sqlalchemy.orm import Session
 
-from congress_rag.db.models import Congresista, Documento, Votacion, Voto
+from congress_rag.db.models import (
+    Congresista,
+    Documento,
+    Legislatura,
+    Votacion,
+    Voto,
+)
 from congress_rag.ingestion.normalize import normalize_key, strip_accents
 from congress_rag.schemas import Filtros, Posicion, TableSpec
 
@@ -66,11 +72,27 @@ def _pk(session: Session, votacion_id: str) -> int | None:
     return session.scalar(select(Votacion.id).where(Votacion.votacion_id == votacion_id))
 
 
+def _condiciones_votaciones(filtros: Filtros, texto: str | None) -> list[Any]:
+    condiciones: list[Any] = []
+    if filtros.legislatura:
+        condiciones.append(Documento.legislatura_id == filtros.legislatura)
+    if filtros.acta_id:
+        condiciones.append(Documento.acta_id == filtros.acta_id)
+    if filtros.tipo:
+        condiciones.append(Votacion.tipo == filtros.tipo)
+    if texto:
+        clave = normalize_key(texto)
+        if clave:
+            condiciones.append(Votacion.titulo_normalizado.contains(clave))
+    return condiciones
+
+
 def listar_votaciones(
     session: Session,
     filtros: Filtros | None = None,
     texto: str | None = None,
     limit: int = 50,
+    offset: int = 0,
 ) -> list[dict[str, Any]]:
     filtros = filtros or Filtros()
     stmt = (
@@ -88,20 +110,30 @@ def listar_votaciones(
             Documento.pdf_url,
         )
         .join(Documento, Votacion.documento_id == Documento.id)
+        .where(*_condiciones_votaciones(filtros, texto))
         .order_by(Documento.fecha.desc(), Votacion.indice_votacion)
+        .limit(limit)
+        .offset(offset)
     )
-    if filtros.legislatura:
-        stmt = stmt.where(Documento.legislatura_id == filtros.legislatura)
-    if filtros.acta_id:
-        stmt = stmt.where(Documento.acta_id == filtros.acta_id)
-    if filtros.tipo:
-        stmt = stmt.where(Votacion.tipo == filtros.tipo)
-    if texto:
-        clave = normalize_key(texto)
-        if clave:
-            stmt = stmt.where(Votacion.titulo_normalizado.contains(clave))
 
-    return [dict(fila._mapping) for fila in session.execute(stmt.limit(limit)).all()]
+    return [dict(fila._mapping) for fila in session.execute(stmt).all()]
+
+
+def contar_votaciones(
+    session: Session,
+    filtros: Filtros | None = None,
+    texto: str | None = None,
+) -> int:
+    """Cuenta las votaciones que cumplen los mismos filtros que ``listar_votaciones``."""
+
+    filtros = filtros or Filtros()
+    stmt = (
+        select(func.count())
+        .select_from(Votacion)
+        .join(Documento, Votacion.documento_id == Documento.id)
+        .where(*_condiciones_votaciones(filtros, texto))
+    )
+    return int(session.scalar(stmt) or 0)
 
 
 def _tokens(texto: str) -> list[str]:
@@ -378,3 +410,111 @@ def votaciones_por_tipo(
         ],
         metadata={"tipo": tipo, "legislatura": legislatura},
     )
+
+
+def listar_legislaturas(session: Session) -> list[dict[str, Any]]:
+    filas = session.execute(
+        select(
+            Legislatura.id,
+            Legislatura.periodo_anual,
+            Legislatura.nombre,
+            func.count(func.distinct(Documento.id)).label("actas"),
+            func.count(func.distinct(Votacion.id)).label("votaciones"),
+        )
+        .outerjoin(Documento, Documento.legislatura_id == Legislatura.id)
+        .outerjoin(Votacion, Votacion.documento_id == Documento.id)
+        .group_by(Legislatura.id, Legislatura.periodo_anual, Legislatura.nombre)
+        .order_by(Legislatura.id)
+    ).all()
+    return [dict(fila._mapping) for fila in filas]
+
+
+def listar_tipos(session: Session) -> list[str]:
+    stmt = (
+        select(Votacion.tipo)
+        .where(Votacion.tipo.is_not(None))
+        .distinct()
+        .order_by(Votacion.tipo)
+    )
+    return [tipo for tipo in session.scalars(stmt).all() if tipo]
+
+
+def listar_bancadas(session: Session) -> list[dict[str, Any]]:
+    filas = session.execute(
+        select(Congresista.bancada, func.count().label("congresistas"))
+        .group_by(Congresista.bancada)
+        .order_by(func.count().desc())
+    ).all()
+    return [
+        {"bancada": bancada or "SIN BANCADA", "congresistas": cantidad}
+        for bancada, cantidad in filas
+    ]
+
+
+def listar_actas(
+    session: Session, legislatura: str | None = None, limit: int = 100, offset: int = 0
+) -> list[dict[str, Any]]:
+    stmt = (
+        select(
+            Documento.acta_id,
+            Documento.numero_sesion,
+            Documento.fecha,
+            Documento.legislatura_id,
+            Documento.n_paginas,
+            Documento.pdf_url,
+            func.count(Votacion.id).label("votaciones"),
+        )
+        .outerjoin(Votacion, Votacion.documento_id == Documento.id)
+        .group_by(Documento.id)
+        .order_by(Documento.fecha.desc())
+        .limit(limit)
+        .offset(offset)
+    )
+    if legislatura:
+        stmt = stmt.where(Documento.legislatura_id == legislatura)
+    return [dict(fila._mapping) for fila in session.execute(stmt).all()]
+
+
+def contar_actas(session: Session, legislatura: str | None = None) -> int:
+    stmt = select(func.count()).select_from(Documento)
+    if legislatura:
+        stmt = stmt.where(Documento.legislatura_id == legislatura)
+    return int(session.scalar(stmt) or 0)
+
+
+def buscar_congresistas(
+    session: Session, texto: str | None = None, limit: int = 50
+) -> list[dict[str, Any]]:
+    stmt = select(
+        Congresista.congresista_id,
+        Congresista.nombre,
+        Congresista.bancada,
+        Congresista.grupo_partido,
+        Congresista.perfil_url,
+    ).order_by(Congresista.nombre)
+    if texto:
+        clave = normalize_key(texto)
+        if clave:
+            stmt = stmt.where(Congresista.nombre_normalizado.contains(clave))
+    return [dict(fila._mapping) for fila in session.execute(stmt.limit(limit)).all()]
+
+
+def resumen_calidad(session: Session) -> dict[str, Any]:
+    """Métricas agregadas del corpus para el endpoint de calidad."""
+
+    confianza = {
+        (clave or "sin dato"): cantidad
+        for clave, cantidad in session.execute(
+            select(Voto.confianza, func.count()).group_by(Voto.confianza)
+        ).all()
+    }
+    return {
+        "actas": int(session.scalar(select(func.count()).select_from(Documento)) or 0),
+        "votaciones": int(session.scalar(select(func.count()).select_from(Votacion)) or 0),
+        "votos": int(session.scalar(select(func.count()).select_from(Voto)) or 0),
+        "congresistas": int(
+            session.scalar(select(func.count()).select_from(Congresista)) or 0
+        ),
+        "paginas": int(session.scalar(select(func.sum(Documento.n_paginas))) or 0),
+        "confianza_votos": confianza,
+    }

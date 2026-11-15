@@ -90,6 +90,41 @@ uv run streamlit run src/congress_rag/ui/app.py
 uv run pytest
 ```
 
+## API HTTP
+
+La API expone el mismo motor que la interfaz: SQL determinista, recuperación
+semántica opcional y la cadena RAG completa.
+
+```bash
+uv run python scripts/ingest.py      # crea la base
+uv run python -m congress_rag.api    # http://127.0.0.1:8000
+```
+
+- Swagger UI: `http://127.0.0.1:8000/docs`
+- ReDoc: `http://127.0.0.1:8000/redoc`
+
+| Método | Ruta | Descripción |
+|---|---|---|
+| GET | `/health` | Estado del servicio y conteos del corpus |
+| GET | `/v1/legislaturas`, `/v1/tipos`, `/v1/bancadas`, `/v1/actas` | Catálogo |
+| GET | `/v1/votaciones` | Lista paginada con filtros |
+| GET | `/v1/votaciones/{id}` | Detalle de una votación |
+| GET | `/v1/votaciones/{id}/bancadas` | Conteo por bancada |
+| GET | `/v1/votaciones/{id}/votos?posicion=` | Votos a favor, en contra, abstención o no voto |
+| GET | `/v1/congresistas` | Padrón filtrable por nombre |
+| GET | `/v1/congresistas/{nombre}/historial` | Historial de voto |
+| POST | `/v1/consulta` | Pregunta en lenguaje natural |
+| POST | `/v1/consulta/export?formato=excel\|word` | Exportación reproducible |
+| GET | `/v1/calidad/resumen`, `/v1/calidad/qa` | Transparencia del corpus |
+
+```bash
+curl -s -X POST http://127.0.0.1:8000/v1/consulta \
+  -H 'Content-Type: application/json' \
+  -d '{"pregunta":"¿Cómo votó cada bancada en la moción 19785?","usar_llm":false}'
+```
+
+Documentación completa y ejemplos: [`docs/API.md`](docs/API.md).
+
 ## Estructura
 
 ```
@@ -101,6 +136,7 @@ src/congress_rag/
 ├── indexing/          # embeddings y ChromaDB
 ├── rag/               # router, SQL tools, LLM, cadena
 ├── export/            # Excel y Word
+├── api/               # FastAPI: endpoints HTTP
 └── ui/                # Streamlit
 ```
 
@@ -113,10 +149,12 @@ src/congress_rag/
 - [ ] Índice vectorial poblado (requiere extras de embeddings y Chroma)
 - [x] Router + cadena RAG determinista con citas
 - [x] UI Streamlit y exportación a Excel/Word
+- [x] API HTTP con FastAPI (Swagger en `/docs`) y exportación por endpoint
 - [x] Set dorado de evaluación inicial
-- [x] 34 tests unitarios
+- [x] 50 tests unitarios
 
 ## Documentación
 
+- `docs/API.md`
 - `docs/PLAN_Congress_RAG.md`
 - `docs/ARQUITECTURA_PRESENTACION_Congress_RAG.md`

@@ -333,6 +333,7 @@ name = "congress-rag"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [
+    { name = "fastapi" },
     { name = "openpyxl" },
     { name = "pandas" },
     { name = "pydantic" },
@@ -341,6 +342,7 @@ dependencies = [
     { name = "rapidfuzz" },
     { name = "rich" },
     { name = "sqlalchemy" },
+    { name = "uvicorn" },
 ]
 
 [package.optional-dependencies]
@@ -367,6 +369,7 @@ vector = [
 
 [package.dev-dependencies]
 dev = [
+    { name = "httpx" },
     { name = "pytest" },
     { name = "pytest-cov" },
     { name = "ruff" },
@@ -376,6 +379,7 @@ dev = [
 requires-dist = [
     { name = "chromadb", marker = "extra == 'all'", specifier = ">=0.5" },
     { name = "chromadb", marker = "extra == 'vector'", specifier = ">=0.5" },
+    { name = "fastapi", specifier = ">=0.115" },
     { name = "google-genai", marker = "extra == 'all'", specifier = ">=1.0" },
     { name = "google-genai", marker = "extra == 'llm'", specifier = ">=1.0" },
     { name = "ollama", marker = "extra == 'all'", specifier = ">=0.3" },
@@ -392,11 +396,13 @@ requires-dist = [
     { name = "sqlalchemy", specifier = ">=2.0" },
     { name = "streamlit", marker = "extra == 'all'", specifier = ">=1.36" },
     { name = "streamlit", marker = "extra == 'ui'", specifier = ">=1.36" },
+    { name = "uvicorn", specifier = ">=0.30" },
 ]
 provides-extras = ["embeddings", "vector", "llm", "ui", "all"]
 
 [package.metadata.requires-dev]
 dev = [
+    { name = "httpx", specifier = ">=0.27" },
     { name = "pytest", specifier = ">=8.0" },
     { name = "pytest-cov", specifier = ">=5.0" },
     { name = "ruff", specifier = ">=0.6" },
@@ -567,6 +573,24 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/d3/38/af70d7ab1ae9d4da450eeec1fa3918940a5fafb9055e934af8d6eb0c2313/et_xmlfile-2.0.0.tar.gz", hash = "sha256:dab3f4764309081ce75662649be815c4c9081e88f0837825f90fd28317d4da54", size = 17234, upload-time = "2024-10-25T17:25:40.039Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/c1/8b/5fe2cc11fee489817272089c4203e679c63b570a5aaeb18d852ae3cbba6a/et_xmlfile-2.0.0-py3-none-any.whl", hash = "sha256:7a91720bc756843502c3b7504c77b8fe44217c85c537d85037f0f536151b2caa", size = 18059, upload-time = "2024-10-25T17:25:39.051Z" },
+]
+
+[[package]]
+name = "fastapi"
+version = "0.163.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "annotated-doc" },
+    { name = "anyio" },
+    { name = "opentelemetry-api" },
+    { name = "pydantic" },
+    { name = "starlette" },
+    { name = "typing-extensions" },
+    { name = "typing-inspection" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/f1/98/5411252e1c08bdd919c5d55774cebe9da0bebfb174c4e4ffa1a5821935ff/fastapi-0.163.0.tar.gz", hash = "sha256:ef55fa066d74b922aac7231af7869c4469b88ca00cac5d0421e42ceee213a902", size = 543109, upload-time = "2026-11-14T16:53:16.356Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/de/b0/2d68e967b2fc6012ef1e7e91253c8222a2a895a45dee3677562deb93987e/fastapi-0.163.0-py3-none-any.whl", hash = "sha256:7572550ab4935e3ff373dc0191aea410d6c48127cc5477bc290b992fe539e345", size = 154381, upload-time = "2026-11-14T16:53:14.67Z" },
 ]
 
 [[package]]

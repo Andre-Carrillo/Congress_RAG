@@ -1,4 +1,4 @@
-.PHONY: install install-all ingest chunks index app test lint clean
+.PHONY: install install-all ingest chunks index api app test lint clean
 
 install:
 	uv sync
@@ -14,6 +14,9 @@ chunks:
 
 index:
 	uv run python scripts/build_index.py
+
+api:
+	uv run python -m congress_rag.api --reload
 
 app:
 	uv run streamlit run src/congress_rag/ui/app.py

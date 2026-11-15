@@ -69,7 +69,7 @@ Pregunta ──▶ ¿Qué necesita?
 └───────────────────────┬─────────────────────────────┘
                         ▼
 ┌─────────────────────────────────────────────────────┐
-│ CONSULTA (Streamlit)                                │
+│ CONSULTA (Streamlit · API HTTP)                     │
 │ router → sql_tools (exacto)                         │
 │        → retriever (semántico)                      │
 │        → LLM (Ollama / Gemini)                      │
@@ -78,7 +78,7 @@ Pregunta ──▶ ¿Qué necesita?
                         ▼
 ┌─────────────────────────────────────────────────────┐
 │ SALIDA                                              │
-│ Excel (openpyxl) · Word (python-docx) · UI          │
+│ Streamlit · FastAPI (/docs) · Excel · Word          │
 └─────────────────────────────────────────────────────┘
 ```
 

@@ -41,6 +41,11 @@ class Settings(BaseSettings):
     top_k: int = 5
     min_score: float = 0.25
 
+    # API HTTP
+    api_host: str = "127.0.0.1"
+    api_port: int = 8000
+    api_cors_origins: str = "*"
+
     def model_post_init(self, __context: object, /) -> None:
         for name in (
             "ushnu_dir",
@@ -58,6 +63,10 @@ class Settings(BaseSettings):
     @property
     def legislaturas_list(self) -> list[str]:
         return [item.strip() for item in self.legislaturas.split(",") if item.strip()]
+
+    @property
+    def api_cors_origins_list(self) -> list[str]:
+        return [item.strip() for item in self.api_cors_origins.split(",") if item.strip()]
 
     def ensure_dirs(self) -> None:
         self.data_dir.mkdir(parents=True, exist_ok=True)
