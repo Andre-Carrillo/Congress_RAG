@@ -7,7 +7,12 @@ from typing import Literal
 from fastapi import APIRouter, Depends, Query, Response
 from sqlalchemy.orm import Session
 
-from congress_rag.api.deps import get_db, get_retriever, resolver_llm
+from congress_rag.api.deps import (
+    get_db,
+    get_retriever_narrativa,
+    get_retriever_votaciones,
+    resolver_llm,
+)
 from congress_rag.api.schemas import ConsultaRequest, ConsultaResponse
 from congress_rag.export.excel import to_excel
 from congress_rag.export.word import to_word
@@ -25,7 +30,8 @@ def _responder(session: Session, payload: ConsultaRequest) -> ConsultaResponse:
         session,
         payload.pregunta,
         provider=provider,
-        retriever=get_retriever(),
+        retriever_votaciones=get_retriever_votaciones(),
+        retriever_narrativa=get_retriever_narrativa(),
         use_llm=payload.usar_llm,
     )
     answer.advertencias.extend(advertencias)

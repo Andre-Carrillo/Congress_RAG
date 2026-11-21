@@ -38,10 +38,13 @@ def main() -> int:
         return 1
 
     provider = None if args.sin_llm else get_provider()
+    retriever_votaciones = None
+    retriever_narrativa = None
     try:
-        retriever = Retriever()
+        retriever_votaciones = Retriever(collection="votaciones")
+        retriever_narrativa = Retriever(collection="narrativa")
     except Exception:
-        retriever = None
+        pass
 
     engine = get_engine(settings.db_path)
     resultados: list[dict[str, object]] = []
@@ -51,7 +54,8 @@ def main() -> int:
                 session,
                 str(fila["pregunta"]),
                 provider=provider,
-                retriever=retriever,
+                retriever_votaciones=retriever_votaciones,
+                retriever_narrativa=retriever_narrativa,
                 use_llm=not args.sin_llm,
             )
             resultados.append(
@@ -59,8 +63,10 @@ def main() -> int:
                     "pregunta": answer.pregunta,
                     "esperado": fila.get("esperado", ""),
                     "respuesta": answer.respuesta,
+                    "modo": answer.modo,
                     "confianza": answer.confianza,
                     "n_fuentes": len(answer.fuentes),
+                    "n_fragmentos": len(answer.fragmentos),
                     "advertencias": " | ".join(answer.advertencias),
                 }
             )

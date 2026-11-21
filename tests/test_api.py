@@ -23,12 +23,8 @@ def _poblar(engine: Engine) -> None:
     with Session(engine, expire_on_commit=False) as session:
         session.add_all(
             [
-                Legislatura(
-                    id="2025-2026-L2", periodo_anual="2025-2026", nombre="Segunda"
-                ),
-                Legislatura(
-                    id="2025-2026-L1", periodo_anual="2025-2026", nombre="Primera"
-                ),
+                Legislatura(id="2025-2026-L2", periodo_anual="2025-2026", nombre="Segunda"),
+                Legislatura(id="2025-2026-L1", periodo_anual="2025-2026", nombre="Primera"),
             ]
         )
         session.flush()
@@ -148,9 +144,8 @@ def client(tmp_path, monkeypatch) -> TestClient:
             yield session
 
     app.dependency_overrides[get_db] = _sesion_prueba
-    monkeypatch.setattr(
-        "congress_rag.api.routes.consulta.get_retriever", lambda: None
-    )
+    monkeypatch.setattr("congress_rag.api.routes.consulta.get_retriever_votaciones", lambda: None)
+    monkeypatch.setattr("congress_rag.api.routes.consulta.get_retriever_narrativa", lambda: None)
     with TestClient(app) as cliente:
         yield cliente
     app.dependency_overrides.clear()
@@ -281,6 +276,67 @@ def test_consulta_determinista_sin_llm(client: TestClient) -> None:
 def test_consulta_valida_pregunta_corta(client: TestClient) -> None:
     respuesta = client.post("/v1/consulta", json={"pregunta": "¿?", "usar_llm": False})
     assert respuesta.status_code == 422
+
+
+class _RetrieverBusqueda:
+    def __init__(self) -> None:
+        self.where: dict[str, object] | None = None
+
+    def search(self, pregunta, top_k=None, where=None, min_score=None):
+        self.where = where
+        return [
+            {
+                "id": "narrativa:2026-03-05-01:8",
+                "texto": "Se debatió la reforma del transporte.",
+                "metadata": {
+                    "acta_id": "2026-03-05-01",
+                    "pagina": 8,
+                    "tipo": "narrativa",
+                    "votacion_id": "",
+                },
+                "score": 0.86,
+                "distancia": 0.14,
+            }
+        ]
+
+
+def test_buscar_devuelve_pasajes_sin_llm(client: TestClient, monkeypatch) -> None:
+    retriever = _RetrieverBusqueda()
+    monkeypatch.setattr(
+        "congress_rag.api.routes.busqueda.get_retriever_narrativa", lambda: retriever
+    )
+
+    respuesta = client.get(
+        "/v1/buscar",
+        params={"q": "reforma del transporte", "acta_id": "2026-03-05-01"},
+    )
+    assert respuesta.status_code == 200
+    cuerpo = respuesta.json()
+    assert cuerpo["coleccion"] == "narrativa"
+    assert cuerpo["total"] == 1
+    assert cuerpo["resultados"][0]["acta_id"] == "2026-03-05-01"
+    assert cuerpo["resultados"][0]["score"] == 0.86
+    assert retriever.where == {"acta_id": "2026-03-05-01"}
+
+
+def test_buscar_sin_indice_advierte(client: TestClient, monkeypatch) -> None:
+    monkeypatch.setattr("congress_rag.api.routes.busqueda.get_retriever_narrativa", lambda: None)
+    respuesta = client.get("/v1/buscar", params={"q": "reforma del transporte"})
+    assert respuesta.status_code == 200
+    assert respuesta.json()["total"] == 0
+    assert respuesta.json()["advertencias"]
+
+
+def test_consulta_de_conteo_del_corpus(client: TestClient) -> None:
+    respuesta = client.post(
+        "/v1/consulta",
+        json={"pregunta": "¿Cuántas actas y votaciones hay?", "usar_llm": False},
+    )
+    assert respuesta.status_code == 200
+    cuerpo = respuesta.json()
+    assert cuerpo["tabla"]["columnas"] == ["Métrica", "Total"]
+    assert cuerpo["tabla"]["filas"] == [["Actas", 2], ["Votaciones", 2]]
+    assert cuerpo["modo"] == "extractivo"
 
 
 def test_exportacion_excel_y_word(client: TestClient) -> None:

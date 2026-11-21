@@ -8,17 +8,28 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from congress_rag import __version__
-from congress_rag.api.routes import calidad, congresistas, consulta, meta, votaciones
+from congress_rag.api.routes import (
+    busqueda,
+    calidad,
+    congresistas,
+    consulta,
+    meta,
+    votaciones,
+)
 from congress_rag.api.schemas import EstadoSalud
 from congress_rag.config import settings
 from congress_rag.db.models import Documento, Votacion, Voto
 from congress_rag.db.session import get_engine
+from congress_rag.indexing.vector_store import ChromaStore
 
 DESCRIPCION = """
 API del prototipo **Congress_RAG** para consultar actas de votación del Congreso
 del Perú (legislaturas 2025-2026-L1 y 2025-2026-L2).
 
+- La recuperación (SQL + pasajes de las actas) funciona sin LLM.
+- `/v1/buscar` expone el retrieval puro: pasajes literales con acta, página y similitud.
 - Las cifras salen de consultas SQL deterministas, nunca del LLM.
+- El LLM, si se activa, solo reformula la respuesta base y se valida después.
 - Toda respuesta incluye acta, página y enlace al PDF cuando corresponde.
 - Si el corpus no cubre la pregunta, la respuesta lo declara explícitamente.
 - Los endpoints son de solo lectura, salvo `/v1/consulta`, que no escribe datos.
@@ -46,6 +57,7 @@ def create_app() -> FastAPI:
         )
 
     app.include_router(consulta.router, prefix="/v1")
+    app.include_router(busqueda.router, prefix="/v1")
     app.include_router(votaciones.router, prefix="/v1")
     app.include_router(congresistas.router, prefix="/v1")
     app.include_router(meta.router, prefix="/v1")
@@ -53,7 +65,11 @@ def create_app() -> FastAPI:
 
     @app.get("/health", response_model=EstadoSalud, tags=["estado"])
     def health() -> EstadoSalud:
-        """Estado del servicio: base ingestada, índice vectorial y conteos."""
+        """Estado del servicio: base ingestada, índice vectorial y conteos.
+
+        Cuando el índice está disponible, ``conteos`` incluye también
+        ``chunks_narrativa`` y ``chunks_votaciones``.
+        """
 
         if not settings.db_path.exists():
             return EstadoSalud(
@@ -62,8 +78,7 @@ def create_app() -> FastAPI:
                 base_de_datos="ausente",
                 indice_vectorial="no_disponible",
                 detalle=(
-                    "Falta data/processed/congress.db. "
-                    "Ejecuta `uv run python scripts/ingest.py`."
+                    "Falta data/processed/congress.db. Ejecuta `uv run python scripts/ingest.py`."
                 ),
             )
 
@@ -91,6 +106,12 @@ def create_app() -> FastAPI:
             if settings.chroma_dir.exists() and any(settings.chroma_dir.iterdir())
             else "no_disponible"
         )
+        if indice == "disponible":
+            for nombre in ("narrativa", "votaciones"):
+                try:
+                    conteos[f"chunks_{nombre}"] = ChromaStore(collection=nombre).count()
+                except Exception:
+                    continue
         return EstadoSalud(
             status="ok",
             version=__version__,

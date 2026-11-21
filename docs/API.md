@@ -1,7 +1,8 @@
 # API HTTP de Congress_RAG
 
 La API expone el mismo motor que la interfaz Streamlit: consultas SQL
-deterministas, recuperación semántica opcional y la cadena RAG completa.
+deterministas, recuperación textual y la cadena RAG completa. La recuperación
+funciona sin LLM; el modelo, si se activa, solo reformula la respuesta base.
 Las cifras nunca las calcula el LLM y toda respuesta incluye acta, página y
 enlace al PDF cuando corresponde.
 
@@ -64,6 +65,26 @@ Documentación interactiva generada por FastAPI:
 | GET | `/v1/congresistas` | Padrón; filtro `buscar` por nombre |
 | GET | `/v1/congresistas/{nombre}/historial` | Historial de voto, más reciente primero |
 
+### Búsqueda textual
+
+| Método | Ruta | Descripción |
+|---|---|---|
+| GET | `/v1/buscar` | Pasajes literales por similitud; no usa LLM |
+
+Parámetros:
+
+| Parámetro | Default | Uso |
+|---|---|---|
+| `q` | — | Texto a buscar (3–500 caracteres) |
+| `tipo` | `narrativa` | Colección: `narrativa` (prosa del acta) o `votaciones` |
+| `acta_id` | — | Acota a un acta, p. ej. `2026-06-03-10` |
+| `legislatura` | — | Acota a `2025-2026-L1` o `2025-2026-L2` |
+| `limit` | `5` | Cantidad de pasajes (1–20) |
+| `min_score` | umbral de la colección | Similitud mínima (0–1) |
+
+Este endpoint es la recuperación pura: sirve para comprobar que el texto de las
+actas se puede consultar sin ningún proveedor de lenguaje.
+
 ### Consulta RAG
 
 | Método | Ruta | Descripción |
@@ -80,9 +101,11 @@ Cuerpo de la petición:
 }
 ```
 
-`usar_llm=false` responde de forma determinista desde SQL. Con `true`, el LLM
-redacta; si no está disponible, la API devuelve el resumen determinista y lo
-declara en `advertencias`.
+`usar_llm=false` devuelve la respuesta base extractiva: tabla SQL y/o pasajes
+literales de las actas con `[Acta ..., pág. ...]`. Con `true`, el LLM reformula
+esa misma evidencia; si no está disponible o su texto no pasa la validación
+(cifras o citas inventadas, fuentes omitidas), la API devuelve la base y lo
+declara en `advertencias`. El campo `modo` indica `extractivo` o `redactado`.
 
 ### Calidad
 
@@ -111,6 +134,9 @@ curl -s -X POST http://127.0.0.1:8000/v1/consulta \
   -H 'Content-Type: application/json' \
   -d '{"pregunta":"¿Cómo votó cada bancada en la moción 19785?","usar_llm":false}'
 
+# Recuperación textual sin LLM
+curl -s "http://127.0.0.1:8000/v1/buscar?q=reforma%20del%20transporte&tipo=narrativa&limit=3"
+
 # Exportar la respuesta a Excel
 curl -s -X POST "http://127.0.0.1:8000/v1/consulta/export?formato=excel" \
   -H 'Content-Type: application/json' \
@@ -138,7 +164,30 @@ Respuesta de `/v1/consulta`:
     "filas": [["Renovación Popular", 7, 0, 0, 7]],
     "metadata": {"votacion_id": "2025-10-10-20-v002"}
   },
+  "fragmentos": [],
   "confianza": "alta",
+  "modo": "extractivo",
+  "advertencias": []
+}
+```
+
+Respuesta de `/v1/buscar`:
+
+```json
+{
+  "consulta": "reforma del transporte",
+  "coleccion": "narrativa",
+  "total": 1,
+  "resultados": [
+    {
+      "acta_id": "2025-12-03-29",
+      "pagina": 126,
+      "score": 0.839,
+      "texto": "…sustentó el dictamen y solicitó el apoyo…",
+      "votacion_id": null,
+      "pdf_url": "https://www2.congreso.gob.pe/..."
+    }
+  ],
   "advertencias": []
 }
 ```
@@ -167,8 +216,8 @@ Variables en `.env`:
 - La API es de solo lectura sobre SQLite; varios workers de uvicorn pueden
   compartir la misma base.
 - El primer `/v1/consulta` con `usar_llm=true` puede tardar más si debe cargar
-  el modelo de embeddings o contactar a Ollama.
-- Sin extras de embeddings/Chroma la API sigue operativa: responde desde SQL y
-  advierte que no hay contexto narrativo.
+  el modelo de embeddings o contactar al proveedor.
+- Sin ChromaDB o sin embeddings, `/v1/buscar` devuelve `total=0` con una
+  advertencia, y `/v1/consulta` sigue respondiendo desde SQL.
 - Para exponerla fuera de la máquina, cambia `API_HOST` y restringe
   `API_CORS_ORIGINS` a los dominios reales.

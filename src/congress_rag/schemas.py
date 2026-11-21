@@ -39,12 +39,27 @@ class Fuente(BaseModel):
     votacion_id: str | None = None
 
 
+class Fragmento(BaseModel):
+    """Pasaje recuperado del texto de un acta, con su similitud."""
+
+    acta_id: str
+    pagina: int | None = None
+    score: float
+    texto: str
+    votacion_id: str | None = None
+    pdf_url: str | None = None
+
+
 class Answer(BaseModel):
     pregunta: str
     respuesta: str
     fuentes: list[Fuente] = Field(default_factory=list)
     tabla: TableSpec | None = None
+    fragmentos: list[Fragmento] = Field(default_factory=list)
     confianza: Literal["alta", "media", "baja"] = "media"
+    # "extractivo": respuesta literal construida sin LLM.
+    # "redactado": el LLM reformuló la respuesta base y pasó la validación.
+    modo: Literal["extractivo", "redactado"] = "extractivo"
     advertencias: list[str] = Field(default_factory=list)
 
 

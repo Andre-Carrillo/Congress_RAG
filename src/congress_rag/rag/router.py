@@ -26,6 +26,7 @@ BANCADAS = [
 ]
 
 LEGISLATURA_RE = re.compile(r"\b(20\d{2}-20\d{2}-L\d)\b", re.IGNORECASE)
+ACTA_RE = re.compile(r"\b(20\d{2}-\d{2}-\d{2}-\d{2})\b")
 MOCION_RE = re.compile(
     r"\b(?:moci[oó]n|mocion)\s+(?:de\s+orden\s+del\s+d[ií]a\s+)?(\d{1,5})\b",
     re.IGNORECASE,
@@ -54,15 +55,22 @@ PALABRAS_AGREGACION = [
 ]
 PALABRAS_BUSQUEDA = [
     "debate",
-    "argumento",
-    "argumentos",
+    "debati",
+    "debatio",
+    "discut",
+    "argument",
     "contexto",
-    "qué se dijo",
-    "que se dijo",
+    "se dijo",
     "resume",
     "resumen",
     "explica",
     "motivo",
+    "sustent",
+    "intervin",
+    "interven",
+    "expus",
+    "expuso",
+    "manifest",
 ]
 
 
@@ -71,6 +79,11 @@ def detectar_filtros(pregunta: str) -> Filtros:
     match = LEGISLATURA_RE.search(pregunta)
     if match:
         filtros.legislatura = match.group(1).upper()
+
+    # Un acta concreta permite acotar tanto la búsqueda textual como la SQL.
+    match = ACTA_RE.search(pregunta)
+    if match:
+        filtros.acta_id = match.group(1)
 
     for bancada in BANCADAS:
         if normalize_key(bancada) in normalize_key(pregunta):
@@ -96,14 +109,25 @@ def route_heuristic(pregunta: str) -> QueryPlan:
     agregacion = any(normalize_key(palabra) in texto for palabra in PALABRAS_AGREGACION)
     busqueda = any(normalize_key(palabra) in texto for palabra in PALABRAS_BUSQUEDA)
 
+    entidad_sql = bool(filtros.proyecto_o_mocion or filtros.acta_id)
+
     if agregacion and busqueda:
         intencion = "mixta"
     elif agregacion:
         intencion = "agregacion"
+    elif busqueda and entidad_sql:
+        # Tema del debate + entidad concreta: tabla y pasajes, sin taparse.
+        intencion = "mixta"
     elif busqueda:
         intencion = "busqueda"
-    else:
+    elif entidad_sql:
+        # Una entidad identificable sin tema explícito se resuelve en SQL.
+        intencion = "agregacion"
+    elif filtros.bancada or filtros.legislatura:
         intencion = "mixta"
+    else:
+        # Sin entidad ni señal de conteo, el texto de las actas es la evidencia.
+        intencion = "busqueda"
 
     return QueryPlan(
         intencion=intencion,
@@ -124,7 +148,7 @@ def _fusionar_filtros(base: Filtros, propuesto: Filtros) -> Filtros:
     """
 
     datos = propuesto.model_dump()
-    for campo in ("legislatura", "bancada", "tipo", "proyecto_o_mocion"):
+    for campo in ("legislatura", "bancada", "tipo", "proyecto_o_mocion", "acta_id"):
         valor = getattr(base, campo)
         if valor:
             datos[campo] = valor

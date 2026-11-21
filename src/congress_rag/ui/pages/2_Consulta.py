@@ -28,9 +28,12 @@ if not db_exists():
 with st.sidebar:
     st.subheader("Opciones")
     usar_llm = st.checkbox(
-        "Usar LLM (Ollama/Gemini)",
-        value=True,
-        help="Si se desactiva, la respuesta se genera de forma determinista desde SQL.",
+        "Redactar con LLM (Ollama/Gemini)",
+        value=False,
+        help=(
+            "La recuperación (SQL + pasajes de las actas) funciona sin LLM. "
+            "Actívalo solo para reformular la respuesta ya verificada."
+        ),
     )
     st.caption(f"Proveedor configurado: `{settings.llm_provider}`")
     st.caption(f"Embeddings: `{settings.embedding_model}`")
@@ -49,11 +52,13 @@ if st.button("Consultar", type="primary") and pregunta.strip():
         except Exception as exc:
             advertencia_provider = str(exc)
 
-    retriever = None
+    retriever_votaciones = None
+    retriever_narrativa = None
     try:
-        retriever = Retriever()
+        retriever_votaciones = Retriever(collection="votaciones")
+        retriever_narrativa = Retriever(collection="narrativa")
     except Exception:
-        retriever = None
+        pass
 
     with open_session() as session:
         try:
@@ -61,7 +66,8 @@ if st.button("Consultar", type="primary") and pregunta.strip():
                 session,
                 pregunta,
                 provider=provider,
-                retriever=retriever,
+                retriever_votaciones=retriever_votaciones,
+                retriever_narrativa=retriever_narrativa,
                 use_llm=usar_llm,
             )
         except Exception as exc:
@@ -76,7 +82,12 @@ if "answer" in st.session_state:
 
     st.subheader("Respuesta")
     st.write(answer.respuesta)
-    st.caption(f"Confianza: **{answer.confianza}**")
+    etiqueta_modo = (
+        "redactada por el LLM sobre evidencia recuperada"
+        if answer.modo == "redactado"
+        else "extractiva, construida sin LLM"
+    )
+    st.caption(f"Confianza: **{answer.confianza}** · Respuesta {etiqueta_modo}")
 
     for advertencia in answer.advertencias:
         st.warning(advertencia)
@@ -88,6 +99,21 @@ if "answer" in st.session_state:
             use_container_width=True,
             hide_index=True,
         )
+
+    if answer.fragmentos:
+        with st.expander(
+            f"Pasajes recuperados de las actas ({len(answer.fragmentos)})",
+            expanded=not (answer.tabla and answer.tabla.filas),
+        ):
+            for fragmento in answer.fragmentos:
+                encabezado = f"Acta **{fragmento.acta_id}**"
+                if fragmento.pagina:
+                    encabezado += f" · página {fragmento.pagina}"
+                encabezado += f" · similitud {fragmento.score:.3f}"
+                if fragmento.pdf_url:
+                    encabezado += f" · [ver PDF]({fragmento.pdf_url})"
+                st.markdown(f"- {encabezado}")
+                st.caption(fragmento.texto)
 
     if answer.fuentes:
         with st.expander("Fuentes", expanded=True):

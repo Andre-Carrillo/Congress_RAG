@@ -11,12 +11,15 @@ Sistema RAG híbrido para procesar y consultar actas de votación del Congreso d
 
 ## Arquitectura
 
-El sistema separa dos capas:
+La recuperación funciona **sin LLM** y el modelo es una capa opcional encima:
 
-1. **Estructurada (SQLite):** votos, congresistas, bancadas y conteos exactos.
-2. **Semántica (ChromaDB):** fragmentos de las actas para preguntas de contexto.
+1. **Router determinista:** reglas para moción, proyecto, acta, legislatura, bancada y tipo de pregunta.
+2. **Recuperación estructurada (SQLite):** votos, congresistas, bancadas, conteos exactos y conteos del corpus.
+3. **Recuperación textual (ChromaDB):** pasajes literales del acta, con página y similitud.
 
-Un router decide qué capa usar. El LLM redacta la respuesta, pero **nunca calcula** los números.
+Con esas dos fuentes se construye una **respuesta base extractiva**. El LLM, si
+se activa, solo la reformula: no elige fuentes ni calcula cifras. Una validación
+posterior descarta su texto si inventa números o citas, u omite fuentes.
 
 ## Alcance inicial
 
@@ -106,6 +109,7 @@ uv run python -m congress_rag.api    # http://127.0.0.1:8000
 | GET | `/v1/votaciones/{id}/votos?posicion=` | Votos a favor, en contra, abstención o no voto |
 | GET | `/v1/congresistas` | Padrón filtrable por nombre |
 | GET | `/v1/congresistas/{nombre}/historial` | Historial de voto |
+| GET | `/v1/buscar?q=...&tipo=narrativa\|votaciones` | Pasajes literales por similitud, sin LLM |
 | POST | `/v1/consulta` | Pregunta en lenguaje natural |
 | POST | `/v1/consulta/export?formato=excel\|word` | Exportación reproducible |
 | GET | `/v1/calidad/resumen`, `/v1/calidad/qa` | Transparencia del corpus |
@@ -120,8 +124,8 @@ Documentación completa y ejemplos: [`docs/API.md`](docs/API.md).
 
 ## LLM (opcional)
 
-La app funciona sin LLM: en ese caso responde de forma determinista desde SQL.
-Para redactar con un modelo, configura `.env`:
+La app funciona sin LLM: el router, SQL y la búsqueda en ChromaDB producen una
+respuesta extractiva con citas. Para reformularla con un modelo, configura `.env`:
 
 ```env
 # Opción local, sin costo ni cuota
@@ -141,7 +145,8 @@ LLM_ROUTER=false
 
 Si el proveedor falla o tarda más que `GEMINI_TIMEOUT_MS`, la respuesta se
 genera de forma determinista y se agrega `"LLM no disponible: ..."` en
-`advertencias`. El LLM nunca calcula cifras.
+`advertencias`. El LLM nunca calcula cifras ni elige fuentes: si su texto
+introduce números o citas que no están en la evidencia, se descarta.
 
 ## Estructura
 

@@ -42,6 +42,11 @@ class Settings(BaseSettings):
     embedding_model: str = "intfloat/multilingual-e5-small"
     top_k: int = 5
     min_score: float = 0.25
+    # Ruta textual: umbral propio y margen relativo al mejor pasaje.
+    # Medido sobre el corpus real: los pasajes relevantes caen en 0.80-0.88.
+    min_score_narrativa: float = 0.80
+    margen_score_narrativa: float = 0.05
+    top_k_narrativa: int = 5
 
     # API HTTP
     api_host: str = "127.0.0.1"

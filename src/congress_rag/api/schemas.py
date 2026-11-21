@@ -88,6 +88,27 @@ class CongresistaResumen(BaseModel):
     perfil_url: str | None = None
 
 
+class ResultadoBusqueda(BaseModel):
+    """Pasaje recuperado por similitud semántica, sin redacción."""
+
+    acta_id: str
+    pagina: int | None = None
+    score: float
+    texto: str
+    votacion_id: str | None = None
+    pdf_url: str | None = None
+
+
+class RespuestaBusqueda(BaseModel):
+    """Resultado del retrieval puro; no interviene ningún LLM."""
+
+    consulta: str
+    coleccion: Literal["narrativa", "votaciones"]
+    total: int
+    resultados: list[ResultadoBusqueda] = Field(default_factory=list)
+    advertencias: list[str] = Field(default_factory=list)
+
+
 class TableResponse(TableSpec):
     """Tabla reproducible equivalente a la que muestra la interfaz."""
 

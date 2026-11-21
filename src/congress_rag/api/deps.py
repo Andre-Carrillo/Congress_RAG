@@ -36,17 +36,21 @@ def get_db() -> Iterator[Session]:
         yield session
 
 
-@lru_cache(maxsize=1)
-def _retriever_cache() -> Retriever | None:
+@lru_cache(maxsize=2)
+def _retriever_cache(coleccion: str) -> Retriever | None:
     try:
-        return Retriever()
+        return Retriever(collection=coleccion)
     except Exception:
         # Sin extras de embeddings/Chroma la API sigue respondiendo desde SQL.
         return None
 
 
-def get_retriever() -> Retriever | None:
-    return _retriever_cache()
+def get_retriever_votaciones() -> Retriever | None:
+    return _retriever_cache("votaciones")
+
+
+def get_retriever_narrativa() -> Retriever | None:
+    return _retriever_cache("narrativa")
 
 
 def resolver_llm(usar_llm: bool) -> tuple[LLMProvider | None, list[str]]:
